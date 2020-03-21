@@ -198,14 +198,40 @@ list_ele_t *sort(list_ele_t *start)
     front = head;  // partition the linked list into two sublists
     back = slow->next;
     slow->next = NULL;
-
     front = sort(front);
     back = sort(back);
-
-    head = SortedMerge(front, back);
+    if (front == NULL)  // iterative version
+        return back;
+    if (back == NULL)
+        return front;
+    list_ele_t *merge;
+    if (strcmp(front->value, back->value) <= 0) {
+        merge = front;
+        head = front;
+        front = front->next;
+    } else {
+        merge = back;
+        head = back;
+        back = back->next;
+    }
+    while ((front != NULL) && (back != NULL)) {
+        if (strcmp(front->value, back->value) <= 0) {
+            merge->next = front;
+            merge = merge->next;
+            front = front->next;
+        } else {
+            merge->next = back;
+            merge = merge->next;
+            back = back->next;
+        }
+    }
+    if (front == NULL)  // merge the remain part
+        merge->next = back;
+    else if (back == NULL)
+        merge->next = front;
     return head;
 }
-list_ele_t *SortedMerge(list_ele_t *a, list_ele_t *b)
+/*list_ele_t *SortedMerge(list_ele_t *a, list_ele_t *b)
 {
     list_ele_t *result = NULL;
 
@@ -221,4 +247,4 @@ list_ele_t *SortedMerge(list_ele_t *a, list_ele_t *b)
         result->next = SortedMerge(a, b->next);
     }
     return result;
-}
+}*/
