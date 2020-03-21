@@ -66,7 +66,7 @@ bool q_insert_head(queue_t *q, char *s)
     strncpy(newh->value, s, strlen(s) + 1);  // copy the string to the node
     newh->next = q->head;
     q->head = newh;
-    q->size++;
+    (q->size)++;
     return true;
 }
 /*
@@ -97,7 +97,7 @@ bool q_insert_tail(queue_t *q, char *s)
         q->tail->next = newt;
         q->tail = newt;
     }
-    q->size++;
+    (q->size)++;
     return true;
 }
 
@@ -122,7 +122,7 @@ bool q_remove_head(queue_t *q, char *sp, size_t bufsize)
     free(ptr);
     if (q->head == NULL)
         q->tail = NULL;
-    q->size--;
+    (q->size)--;
     return true;
 }
 /*
@@ -179,33 +179,46 @@ void q_sort(queue_t *q)
 }
 list_ele_t *sort(list_ele_t *start)
 {
-    if (!start || !start->next)
+    if ((start == NULL) || (start->next == NULL))
         return start;
-    list_ele_t *left = start;
-    list_ele_t *right = left->next;
-    left->next = NULL;
-
-    left = sort(left);
-    right = sort(right);
-
-    for (list_ele_t *merge = NULL; left || right;) {
-        if (!right || (left && (strcmp(left->value, right->value) <= 0))) {
-            if (!merge) {
-                start = merge = left;
-            } else {
-                merge->next = left;
-                merge = merge->next;
-            }
-            left = left->next;
-        } else {
-            if (!merge) {
-                start = merge = right;
-            } else {
-                merge->next = right;
-                merge = merge->next;
-            }
-            right = right->next;
+    list_ele_t *head = start;
+    list_ele_t *fast;
+    list_ele_t *slow;
+    list_ele_t *front;
+    list_ele_t *back;
+    slow = head;
+    fast = head->next;
+    while (fast != NULL) {
+        fast = fast->next;
+        if (fast != NULL) {
+            slow = slow->next;
+            fast = fast->next;
         }
     }
-    return start;
+    front = head;  // partition the linked list into two sublists
+    back = slow->next;
+    slow->next = NULL;
+
+    front = sort(front);
+    back = sort(back);
+
+    head = SortedMerge(front, back);
+    return head;
+}
+list_ele_t *SortedMerge(list_ele_t *a, list_ele_t *b)
+{
+    list_ele_t *result = NULL;
+
+    if (a == NULL)
+        return b;
+    else if (b == NULL)
+        return a;
+    if (strcmp(a->value, b->value) <= 0) {
+        result = a;
+        result->next = SortedMerge(a->next, b);
+    } else {
+        result = b;
+        result->next = SortedMerge(a, b->next);
+    }
+    return result;
 }
