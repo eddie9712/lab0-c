@@ -5,9 +5,6 @@
 #include "harness.h"
 #include "queue.h"
 
-#ifndef strlcpy
-#define strlcpy(dst, src, sz) snprintf((dst), (sz), "%s", (src))
-#endif
 /*
  * Create empty queue.
  * Return NULL if could not allocate space.
@@ -23,7 +20,6 @@ queue_t *q_new()
     }
     return q;
 }
-
 /* Free all storage used by queue */
 void q_free(queue_t *q)
 {
@@ -56,7 +52,10 @@ bool q_insert_head(queue_t *q, char *s)
         return false;
     list_ele_t *newh;
     newh = malloc(sizeof(list_ele_t));
-    if (newh == NULL) {
+    if (newh == NULL)
+        return false;
+    newh->value = malloc(sizeof(char) * strlen(s) + 1);
+    if (newh->value == NULL) {
         free(newh);
         return false;
     }
@@ -64,7 +63,7 @@ bool q_insert_head(queue_t *q, char *s)
     /* What if either call to malloc returns NULL? */
     if (q->head == NULL)
         q->tail = newh;
-    strlcpy(newh->value, s, strlen(s) + 1);  // copy the string to the node
+    strncpy(newh->value, s, strlen(s) + 1);  // copy the string to the node
     newh->next = q->head;
     q->head = newh;
     q->size++;
@@ -79,16 +78,17 @@ bool q_insert_head(queue_t *q, char *s)
  */
 bool q_insert_tail(queue_t *q, char *s)
 {
+    if (q == NULL)
+        return false;
     list_ele_t *newt = malloc(sizeof(list_ele_t));
-    if (q == NULL) {
+    if (newt == NULL)  // fail to allocate
+        return false;
+    newt->value = malloc(sizeof(char) * strlen(s) + 1);
+    if (newt->value == NULL) {
         free(newt);
         return false;
     }
-    if (newt == NULL) {  // fail to allocate
-        free(newt);
-        return false;
-    }
-    strlcpy(newt->value, s, strlen(s) + 1);
+    strncpy(newt->value, s, strlen(s) + 1);
     if (q->tail == NULL) {
         newt->next = q->head;
         q->head = newt;
@@ -111,10 +111,12 @@ bool q_insert_tail(queue_t *q, char *s)
  */
 bool q_remove_head(queue_t *q, char *sp, size_t bufsize)
 {
-    if ((q == NULL) || (q->head == NULL))  // queue is null or empty
+    if (q == NULL)  // queue is null or empty
+        return false;
+    if (q->head == NULL)
         return false;
     list_ele_t *ptr = q->head;
-    memmove(sp, q->head->value, bufsize - 1);
+    snprintf(sp, bufsize, "%s", q->head->value);
     free(q->head->value);
     q->head = q->head->next;
     free(ptr);
@@ -123,7 +125,6 @@ bool q_remove_head(queue_t *q, char *sp, size_t bufsize)
     q->size--;
     return true;
 }
-
 /*
  * Return number of elements in queue.
  * Return 0 if q is NULL or empty
@@ -134,7 +135,6 @@ int q_size(queue_t *q)
         return 0;
     return q->size;
 }
-
 /*
  * Reverse elements in queue
  * No effect if q is NULL or empty
@@ -144,22 +144,68 @@ int q_size(queue_t *q)
  */
 void q_reverse(queue_t *q)
 {
-    if (q->head != NULL) {
-        list_ele_t *prev = NULL, *cur = q->head, *next = NULL;
-        q->tail = q->head;
-        while (cur != NULL) {
-            next = cur->next;
-            cur->next = prev;
-            prev = cur;
-            cur = next;
+    if (q != NULL) {
+        if (q->head != NULL) {
+            list_ele_t *prev = NULL, *cur = q->head, *next = NULL;
+            q->tail = q->head;
+            while (cur != NULL) {
+                next = cur->next;
+                cur->next = prev;
+                prev = cur;
+                cur = next;
+            }
+            q->head = prev;
         }
-        q->head = prev;
-    }
+    } else
+        return;
 }
-
 /*
  * Sort elements of queue in ascending order
- * No effect if q is NULL or empty. In addition, if q has only one
+ * No effect if q is NULL or empty.In addition, if q has only one
  * element, do nothing.
  */
-void q_sort(queue_t *q) {}
+void q_sort(queue_t *q)
+{
+    if (q != NULL) {
+        if (q->head != NULL && q->size > 1) {
+            list_ele_t *start = q->head;
+            q->head = sort(start);
+            while (q->tail->next != NULL) {
+                q->tail = q->tail->next;
+            }
+        }
+    } else
+        return;
+}
+list_ele_t *sort(list_ele_t *start)
+{
+    if (!start || !start->next)
+        return start;
+    list_ele_t *left = start;
+    list_ele_t *right = left->next;
+    left->next = NULL;
+
+    left = sort(left);
+    right = sort(right);
+
+    for (list_ele_t *merge = NULL; left || right;) {
+        if (!right || (left && (strcmp(left->value, right->value) <= 0))) {
+            if (!merge) {
+                start = merge = left;
+            } else {
+                merge->next = left;
+                merge = merge->next;
+            }
+            left = left->next;
+        } else {
+            if (!merge) {
+                start = merge = right;
+            } else {
+                merge->next = right;
+                merge = merge->next;
+            }
+            right = right->next;
+        }
+    }
+    return start;
+}
